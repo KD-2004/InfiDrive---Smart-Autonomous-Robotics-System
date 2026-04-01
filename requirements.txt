@@ -1,0 +1,13 @@
+flask==2.2.5
+flask-cors==4.0.0
+mediapipe==0.10.21
+opencv-python==4.8.1.78
+torch==2.1.0
+torchvision==0.16.0
+numpy==1.24.3
+gTTS==2.3.2
+ollama==0.1.4
+requests==2.31.0
+pillow==10.0.1
+huggingface-hub==0.18.1
+transformers==4.35.0
