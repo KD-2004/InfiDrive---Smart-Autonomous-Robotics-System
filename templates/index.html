@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vision Controller</title>
+  <style>
+    :root {
+      --dark-1: #0a0a0a;
+      --dark-2: #1a1a1a;
+      --dark-3: #2a2a2a;
+      --accent: #00ff9d;
+      --text: #ffffff;
+      --error: #ff0040;
+      --warning: #ffaa00;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: var(--dark-1);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1rem;
+      padding: 1rem;
+      height: 100%;
+      overflow: hidden;
+    }
+    @media (max-width: 768px) {
+      .container { grid-template-columns: 1fr; grid-template-rows: 60vh auto; }
+    }
+    .video-container {
+      background: var(--dark-2);
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      min-height: 300px;
+    }
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: var(--dark-1);
+    }
+    .controls-container {
+      background: var(--dark-2);
+      border-radius: 12px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      overflow-y: auto;
+    }
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    @media (max-width: 480px) {
+      .button-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .control-btn {
+      padding: 1rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--dark-3);
+      color: var(--text);
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      min-height: 60px;
+    }
+    .control-btn:hover {
+      background: var(--accent);
+      color: var(--dark-1);
+      transform: translateY(-2px);
+    }
+    .control-btn:active { transform: translateY(0); }
+    .control-btn:disabled {
+      background: #555;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    .emergency-btn {
+      grid-column: 1 / -1;
+      background: var(--error);
+      font-weight: bold;
+    }
+    .status-panel {
+      background: var(--dark-3);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: auto;
+    }
+    .detection-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .status-led {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #555;
+    }
+    .status-led.active {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+    .distance-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--dark-2);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+    .distance-value {
+      font-weight: bold;
+      color: var(--accent);
+    }
+    .distance-value.warning {
+      color: var(--warning);
+    }
+    .distance-value.danger {
+      color: var(--error);
+    }
+    #scene-description {
+      background: var(--dark-3);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .loader {
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--text);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    audio { width: 100%; margin-top: 1rem; filter: invert(1); }
+    /* Conversation Panel Styles */
+    .conversation-panel {
+      background: var(--dark-3);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .message {
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      background: var(--dark-2);
+      border-radius: 6px;
+    }
+    .user-message {
+      color: var(--accent);
+      border-left: 3px solid var(--accent);
+    }
+    .ai-message { border-left: 3px solid var(--text); }
+    .input-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    #conversation-input {
+      flex: 1;
+      background: var(--dark-2);
+      border: none;
+      color: var(--text);
+      padding: 0.5rem;
+      border-radius: 4px;
+    }
+    /* Voice Command Button */
+    #mic-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #mic-btn svg {
+      fill: var(--dark-1);
+      width: 24px;
+      height: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="video-container">
+      <img id="video" src="{{ url_for('video_feed') }}" alt="Video Feed" />
+    </div>
+    <div class="controls-container">
+      <div class="distance-info">
+        <span>Distance to Obstacle:</span>
+        <span class="distance-value" id="distance-value">-- cm</span>
+      </div>
+      <div class="button-grid">
+        <button class="control-btn" onclick="sendCommand('forward')" id="forward-btn">↑ Forward</button>
+        <button class="control-btn" onclick="sendCommand('left')">↻ Left</button>
+        <button class="control-btn" onclick="sendCommand('right')">↺ Right</button>
+        <button class="control-btn" onclick="sendCommand('backward')">↓ Backward</button>
+        <button class="control-btn emergency-btn" onclick="sendCommand('stop')">⏹ Emergency Stop</button>
+      </div>
+      <div class="status-panel">
+        <div class="detection-status">
+          <div class="status-led" id="detection-led"></div>
+          <span>Object Detection</span>
+          <button class="control-btn" onclick="toggleDetection()" id="detection-btn" style="margin-left: auto">
+            Toggle
+          </button>
+        </div>
+        <button class="control-btn" onclick="analyzeScene()" id="analyze-btn">
+          Analyze Scene
+        </button>
+        <div id="scene-description"></div>
+        <audio id="tts-audio" controls></audio>
+      </div>
+      <!-- Conversation Panel -->
+      <div class="conversation-panel" id="conversation-history"></div>
+      <div class="input-group">
+        <input id="conversation-input" type="text" placeholder="Type your message here..." />
+        <button class="control-btn" onclick="sendMessage()">Send</button>
+        <!-- Voice Command Button -->
+        <button id="mic-btn" onclick="startVoiceRecognition()">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"></path>
+            <path d="M19 11a1 1 0 0 0-1-1h-1a1 1 0 0 0-1 1v2a5 5 0 0 1-10 0v-2a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v2a7 7 0 0 0 14 0v-2z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global language variable; default to English
+    let currentLanguage = "en";
+    let detectionEnabled = false;
+    let analysisInProgress = false;
+    let recognition;
+    let distanceUpdateInterval;
+
+    // Initialize speech recognition if available and prompt mic permission on load.
+    if ('webkitSpeechRecognition' in window) {
+      recognition = new webkitSpeechRecognition();
+    } else if ('SpeechRecognition' in window) {
+      recognition = new SpeechRecognition();
+    }
+
+    if (recognition) {
+      recognition.lang = 'en-US';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('conversation-input').value = transcript;
+        sendMessage();
+      };
+      recognition.onerror = function(event) {
+        console.error("Voice recognition error:", event.error);
+      };
+      // Start then stop quickly to trigger permission prompt.
+      recognition.start();
+      setTimeout(() => recognition.stop(), 1000);
+    }
+
+    // Function to parse language commands from user input.
+    function checkForLanguageCommand(text) {
+      let lowerText = text.toLowerCase();
+      if (lowerText.startsWith("speak in")) {
+        if (lowerText.includes("gujrathi") || lowerText.includes("gujarati")) {
+          currentLanguage = "gu";
+          return "Language changed to Gujarati.";
+        } else if (lowerText.includes("marathi")) {
+          currentLanguage = "mr";
+          return "Language changed to Marathi.";
+        } else if (lowerText.includes("hindi")) {
+          currentLanguage = "hi";
+          return "Language changed to Hindi.";
+        } else if (lowerText.includes("bengali")) {
+          currentLanguage = "bn";
+          return "Language changed to Bengali.";
+        } else if (lowerText.includes("english")) {
+          currentLanguage = "en";
+          return "Language changed to English.";
+        } else {
+          return "Language not recognized. Please try again.";
+        }
+      }
+      return null;
+    }
+
+    function startVoiceRecognition() {
+      if (recognition) {
+        recognition.start();
+      } else {
+        alert("Voice recognition not supported in this browser.");
+      }
+    }
+
+    // Update distance display
+    function updateDistanceDisplay() {
+      fetch('/distance')
+        .then(response => response.json())
+        .then(data => {
+          const distanceElem = document.getElementById('distance-value');
+          distanceElem.textContent = `${data.distance_cm} cm`;
+          
+          // Add warning colors based on distance
+          if (data.distance_cm !== 'Error' && data.distance_cm !== 'N/A') {
+            const distance = parseFloat(data.distance_cm);
+            distanceElem.classList.remove('warning', 'danger');
+            
+            if (distance < 10) {
+              distanceElem.classList.add('danger');
+              document.getElementById('forward-btn').disabled = true;
+            } else if (distance < 20) {
+              distanceElem.classList.add('warning');
+              document.getElementById('forward-btn').disabled = true;
+            } else {
+              document.getElementById('forward-btn').disabled = false;
+            }
+          }
+        })
+        .catch(error => console.error('Distance update failed:', error));
+    }
+
+    async function toggleDetection() {
+      const btn = document.getElementById('detection-btn');
+      const led = document.getElementById('detection-led');
+      try {
+        const response = await fetch('/toggle_detection', { method: 'POST' });
+        const data = await response.json();
+        detectionEnabled = data.detection_enabled;
+        btn.textContent = detectionEnabled ? 'Disable' : 'Enable';
+        led.classList.toggle('active', detectionEnabled);
+      } catch (error) {
+        console.error('Detection toggle failed:', error);
+      }
+    }
+
+    async function analyzeScene() {
+      if (analysisInProgress) return;
+      analysisInProgress = true;
+      const btn = document.getElementById('analyze-btn');
+      const desc = document.getElementById('scene-description');
+      try {
+        btn.innerHTML = '<div class="loader"></div>';
+        btn.disabled = true;
+        const response = await fetch('/analyze', { method: 'POST' });
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        desc.textContent = data.description;
+        if (data.tts_url) {
+          document.getElementById('tts-audio').src = data.tts_url;
+        }
+      } catch (error) {
+        desc.textContent = error.message;
+        console.error('Analysis failed:', error);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Analyze Scene';
+        analysisInProgress = false;
+      }
+    }
+
+    async function sendCommand(command) {
+      try {
+        const response = await fetch('/control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: command })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || await response.text());
+        
+        // Update distance after movement
+        setTimeout(updateDistanceDisplay, 500);
+      } catch (error) {
+        if (error.message.includes("Obstacle too close")) {
+          alert(`Cannot move forward: ${error.message}`);
+        } else {
+          console.error('Control failed:', error);
+        }
+      }
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('conversation-input');
+      const historyContainer = document.getElementById('conversation-history');
+      const messageText = input.value.trim();
+      if (!messageText) return;
+
+      // Check for language command
+      const langCommandResponse = checkForLanguageCommand(messageText);
+      if (langCommandResponse) {
+        const confirmation = document.createElement('div');
+        confirmation.className = 'message ai-message';
+        confirmation.textContent = langCommandResponse;
+        historyContainer.appendChild(confirmation);
+        input.value = '';
+        historyContainer.scrollTop = historyContainer.scrollHeight;
+        return;
+      }
+
+      const userMessage = document.createElement('div');
+      userMessage.className = 'message user-message';
+      userMessage.textContent = messageText;
+      historyContainer.appendChild(userMessage);
+      try {
+        const response = await fetch('/conversation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: messageText, language: currentLanguage })
+        });
+        const data = await response.json();
+        const aiMessage = document.createElement('div');
+        aiMessage.className = 'message ai-message';
+        aiMessage.textContent = data.response;
+        historyContainer.appendChild(aiMessage);
+        // If AI output includes a control command, parse and execute it.
+        if (data.response.includes("COMMAND:")) {
+          let parts = data.response.split("COMMAND:");
+          let command = parts[1].split("\n")[0].trim();
+          sendCommand(command);
+        }
+        if (data.tts_url) {
+          const audio = new Audio(data.tts_url);
+          audio.play();
+        }
+        input.value = '';
+        historyContainer.scrollTop = historyContainer.scrollHeight;
+      } catch (error) {
+        console.error('Conversation failed:', error);
+      }
+    }
+
+    async function loadHistory() {
+      try {
+        const response = await fetch('/conversation');
+        const result = await response.json();
+        let historyData = result.conversation || result;
+        const container = document.getElementById('conversation-history');
+        container.innerHTML = '';
+        historyData.forEach(entry => {
+          if (entry.user) {
+            const userMsg = document.createElement('div');
+            userMsg.className = 'message user-message';
+            userMsg.textContent = entry.user;
+            container.appendChild(userMsg);
+          }
+          if (entry.ai) {
+            const aiMsg = document.createElement('div');
+            aiMsg.className = 'message ai-message';
+            aiMsg.textContent = entry.ai;
+            container.appendChild(aiMsg);
+          }
+        });
+        if (result.tts_url) {
+          const audio = new Audio(result.tts_url);
+          audio.play();
+        }
+      } catch (error) {
+        console.error('History load failed:', error);
+      }
+    }
+
+    window.onload = function() {
+      loadHistory();
+      document.getElementById('conversation-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+      });
+      toggleDetection();
+      
+      // Start distance updates every second
+      updateDistanceDisplay();
+      distanceUpdateInterval = setInterval(updateDistanceDisplay, 1000);
+    };
+
+    window.onbeforeunload = function() {
+      if (distanceUpdateInterval) {
+        clearInterval(distanceUpdateInterval);
+      }
+    };
+  </script>
+</body>
+</html>
